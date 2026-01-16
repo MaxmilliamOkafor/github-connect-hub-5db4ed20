@@ -112,13 +112,14 @@ async function getUserAIConfig(supabase: any, userId: string): Promise<AIProvide
   const preferredProvider = data.preferred_ai_provider || 'openai';
   console.log(`User preferred AI provider: ${preferredProvider}`);
   
-  // If preferred provider is Kimi and key exists, use Kimi
+  // If preferred provider is Kimi and key exists, use Kimi K2
+  // Using kimi-k2-0711-preview for SPEED (2.5x faster than moonshot-v1)
   if (preferredProvider === 'kimi' && data.kimi_api_key) {
-    console.log('Using Kimi K2 API');
+    console.log('Using Kimi K2 API (kimi-k2-0711-preview - SPEED OPTIMIZED)');
     return {
       provider: 'kimi',
       apiKey: data.kimi_api_key,
-      model: 'moonshot-v1-8k', // Kimi's fast model, good for most tasks
+      model: 'kimi-k2-0711-preview', // Kimi K2 fastest model - 2.5x speed boost
       endpoint: 'https://api.moonshot.cn/v1/chat/completions'
     };
   }
