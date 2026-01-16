@@ -14,7 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      jobs: {
+        Row: {
+          applied_at: string | null
+          company: string
+          company_tier: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          location: string
+          match_score: number | null
+          platform: string | null
+          posted_date: string | null
+          posted_delta: string | null
+          requirements: string[] | null
+          salary: string | null
+          salary_range: string | null
+          snippet: string | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          title: string
+          updated_at: string | null
+          url: string | null
+          url_last_checked: string | null
+          url_status: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          company: string
+          company_tier?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          location: string
+          match_score?: number | null
+          platform?: string | null
+          posted_date?: string | null
+          posted_delta?: string | null
+          requirements?: string[] | null
+          salary?: string | null
+          salary_range?: string | null
+          snippet?: string | null
+          status?: Database["public"]["Enums"]["application_status"] | null
+          title: string
+          updated_at?: string | null
+          url?: string | null
+          url_last_checked?: string | null
+          url_status?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          company?: string
+          company_tier?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          location?: string
+          match_score?: number | null
+          platform?: string | null
+          posted_date?: string | null
+          posted_delta?: string | null
+          requirements?: string[] | null
+          salary?: string | null
+          salary_range?: string | null
+          snippet?: string | null
+          status?: Database["public"]["Enums"]["application_status"] | null
+          title?: string
+          updated_at?: string | null
+          url?: string | null
+          url_last_checked?: string | null
+          url_status?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +94,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      application_status:
+        | "pending"
+        | "applied"
+        | "interview"
+        | "offer"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +226,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      application_status: [
+        "pending",
+        "applied",
+        "interview",
+        "offer",
+        "rejected",
+      ],
+    },
   },
 } as const

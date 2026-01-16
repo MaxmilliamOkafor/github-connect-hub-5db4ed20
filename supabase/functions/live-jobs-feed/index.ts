@@ -50,44 +50,40 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Get authorization header for user context
-    const authHeader = req.headers.get('authorization');
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader || '' } }
-    });
+    // Use service role key to fetch all public jobs
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user from token
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Parse request body for POST or use query params
+    let params: any = {};
+    if (req.method === 'POST') {
+      try {
+        params = await req.json();
+      } catch {
+        params = {};
+      }
     }
 
     // Parse query params
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-    const offset = parseInt(url.searchParams.get('offset') || '0');
-    const since = url.searchParams.get('since'); // ISO timestamp for polling
-    const search = url.searchParams.get('search') || '';
-    const location = url.searchParams.get('location') || '';
-    const jobType = url.searchParams.get('type') || '';
-    const company = url.searchParams.get('company') || '';
-    const status = url.searchParams.get('status') || '';
-    const tierFilter = url.searchParams.get('tier'); // 1, 2, or 3
+    const limit = Math.min(parseInt(params.limit || url.searchParams.get('limit') || '50'), 100);
+    const offset = parseInt(params.offset || url.searchParams.get('offset') || '0');
+    const since = params.since || url.searchParams.get('since'); // ISO timestamp for polling
+    const search = params.search || url.searchParams.get('search') || '';
+    const location = params.location || url.searchParams.get('location') || '';
+    const jobType = params.type || url.searchParams.get('type') || '';
+    const company = params.company || url.searchParams.get('company') || '';
+    const tierFilter = params.tierFilter || url.searchParams.get('tier'); // 1, 2, or 3
 
     // Check ETag / If-Modified-Since for caching
     const ifNoneMatch = req.headers.get('if-none-match');
     const ifModifiedSince = req.headers.get('if-modified-since');
 
-    // Build base query
+    // Build base query - fetch ALL jobs (public feed)
     let query = supabase
       .from('jobs')
       .select('*', { count: 'exact' })
-      .eq('user_id', user.id)
+      .order('company_tier', { ascending: true })
       .order('created_at', { ascending: false });
 
     // If polling for new jobs since a timestamp
@@ -105,8 +101,11 @@ Deno.serve(async (req) => {
     if (company) {
       query = query.ilike('company', `%${company}%`);
     }
-    if (status) {
-      query = query.eq('status', status);
+    if (tierFilter) {
+      const tier = parseInt(tierFilter);
+      if (tier >= 1 && tier <= 3) {
+        query = query.eq('company_tier', tier);
+      }
     }
 
     // Apply pagination
@@ -156,12 +155,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Format jobs with tier classification and relative timestamps
+    // Format jobs with relative timestamps (company_tier is now stored in DB)
     let formattedJobs = (jobs || []).map(job => {
-      const companyTier = getCompanyTier(job.company);
       return {
         ...job,
-        company_tier: companyTier,
+        company_tier: job.company_tier || getCompanyTier(job.company),
         requirements: job.requirements || [],
         match_score: job.match_score || 0,
         status: job.status || 'pending',
@@ -171,17 +169,13 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Filter by tier if specified
-    if (tierFilter) {
-      const tier = parseInt(tierFilter);
-      formattedJobs = formattedJobs.filter(j => j.company_tier === tier);
-    }
-
-    // Calculate tier stats
+    // Calculate tier stats from full result
+    const allJobs = jobs || [];
     const stats = {
-      tier1: formattedJobs.filter(j => j.company_tier === 1).length,
-      tier2: formattedJobs.filter(j => j.company_tier === 2).length,
-      tier3: formattedJobs.filter(j => j.company_tier === 3).length,
+      tier1: allJobs.filter(j => (j.company_tier || getCompanyTier(j.company)) === 1).length,
+      tier2: allJobs.filter(j => (j.company_tier || getCompanyTier(j.company)) === 2).length,
+      tier3: allJobs.filter(j => (j.company_tier || getCompanyTier(j.company)) === 3).length,
+      total: allJobs.length,
     };
 
     // Apply tier-based sorting (70% Tier 1, 30% Tier 2/3, newest first within tiers)
