@@ -169,57 +169,32 @@
   }
 
   /**
-   * FIXED: Inject keyword ALWAYS - guaranteed injection into bullet points
-   * Strategy: Multiple fallback methods to ensure keyword appears in text
+   * IMPROVED: Inject keyword NATURALLY at the END of bullet points only
+   * Strategy: Append keywords using "leveraging/utilizing" phrases - NO REWRITING
+   * This preserves the original bullet content while adding ATS keywords
    */
   function injectKeywordNaturally(bulletPrefix, bulletText, keyword) {
     const text = bulletText.trim();
     const kwLower = keyword.toLowerCase();
     
-    // Check if keyword already exists
+    // Check if keyword already exists - if so, return unchanged
     if (text.toLowerCase().includes(kwLower)) {
       return bulletPrefix + text;
     }
     
     // Natural injection phrases - varied for readability
-    const phrases = [
-      'leveraging', 'utilizing', 'implementing', 'applying', 'using',
-      'through', 'incorporating', 'via', 'with', 'employing'
-    ];
+    const phrases = ['leveraging', 'utilizing', 'through', 'with', 'via'];
     const getPhrase = () => phrases[Math.floor(Math.random() * phrases.length)];
     
-    // Strategy 1: Insert after action verb (most natural)
-    const actionVerbMatch = text.match(/^(Led|Developed|Built|Created|Managed|Implemented|Designed|Architected|Engineered|Delivered|Owned|Integrated|Automated|Optimized|Spearheaded|Directed|Shaped|Drove|Reduced|Increased|Improved|Achieved)\s+/i);
-    if (actionVerbMatch) {
-      const verb = actionVerbMatch[0];
-      const rest = text.slice(verb.length);
-      // Insert keyword right after verb as a descriptor
-      return `${bulletPrefix}${verb}${keyword} ${rest}`;
-    }
+    // ONLY append to end - never modify the original bullet content
+    // This preserves the candidate's real achievements and metrics
     
-    // Strategy 2: Insert after first clause (before comma)
-    const firstComma = text.indexOf(',');
-    if (firstComma > 15 && firstComma < text.length * 0.6) {
-      const before = text.slice(0, firstComma);
-      const after = text.slice(firstComma);
-      return `${bulletPrefix}${before} ${getPhrase()} ${keyword}${after}`;
-    }
-    
-    // Strategy 3: Insert after "using", "with", "in", "via", "through", etc.
-    const insertionMatch = text.match(/(using|with|in|via|through|on|for|by)\s+/i);
-    if (insertionMatch) {
-      const idx = insertionMatch.index + insertionMatch[0].length;
-      const before = text.slice(0, idx);
-      const after = text.slice(idx);
-      return `${bulletPrefix}${before}${keyword}, ${after}`;
-    }
-    
-    // Strategy 4: Insert before period at end
+    // If ends with period, insert before period
     if (text.endsWith('.')) {
       return `${bulletPrefix}${text.slice(0, -1)}, ${getPhrase()} ${keyword}.`;
     }
     
-    // Strategy 5: GUARANTEED - just append to end
+    // Otherwise append
     return `${bulletPrefix}${text}, ${getPhrase()} ${keyword}`;
   }
 
