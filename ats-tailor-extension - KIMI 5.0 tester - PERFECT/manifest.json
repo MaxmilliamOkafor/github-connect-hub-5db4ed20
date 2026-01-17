@@ -213,6 +213,8 @@
         "file-attacher-turbo.js",
         "openresume-generator.js",
         "resume-builder.js",
+        "resume-builder-improved.js",
+        "cv-formatter-perfect.js",
         "workday-handlers.js",
         "content.js"
       ],
@@ -250,6 +252,8 @@
         "file-attacher-turbo.js",
         "openresume-generator.js",
         "resume-builder.js",
+        "resume-builder-improved.js",
+        "cv-formatter-perfect.js",
         "workday-handlers.js"
       ],
       "matches": ["<all_urls>"]

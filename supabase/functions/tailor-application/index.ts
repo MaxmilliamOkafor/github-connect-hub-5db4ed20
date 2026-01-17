@@ -815,8 +815,17 @@ GitHub: ${userProfile.github}
 Portfolio: ${userProfile.portfolio}
 Current Location: ${userProfile.city || ''}, ${userProfile.state || ''} ${userProfile.country || ''}
 
-WORK EXPERIENCE (PRESERVE COMPANY NAMES AND DATES EXACTLY - ONLY REWRITE BULLETS):
+WORK EXPERIENCE (CRITICAL: USE THESE EXACT BULLETS - ONLY ADD MISSING KEYWORDS NATURALLY, DO NOT REWRITE):
 ${JSON.stringify(userProfile.workExperience, null, 2)}
+
+=== BULLET PRESERVATION RULES ===
+- KEEP the EXACT original bullet points from above - these are the candidate's REAL achievements
+- ONLY modification allowed: naturally inject missing JD keywords into existing bullets
+- Example: "Built ML pipeline" → "Built ML pipeline leveraging Python and AWS"  
+- DO NOT invent new achievements, metrics, or responsibilities
+- DO NOT change the meaning or scope of any bullet
+- The candidate has specific metrics (40%, 99.2%, 2M+ users, etc.) - PRESERVE THEM EXACTLY
+=== END BULLET RULES ===
 
 EDUCATION:
 ${JSON.stringify(userProfile.education, null, 2)}
@@ -858,7 +867,7 @@ ${JSON.stringify(userProfile.achievements, null, 2)}
       EXAMPLE OF WRONG SUMMARY (DO NOT DO THIS):
       "${candidateName} ${userProfile.phone} | ${userProfile.email}..." ← THIS IS WRONG
       ███ END DUPLICATION BAN ███
-   - Work Experience: Keep company/dates, rewrite bullets with JD keywords + metrics
+   - Work Experience: KEEP EXACT BULLETS from candidate profile above - only ADD missing keywords naturally (e.g., append "utilizing Python, AWS" to existing bullet). DO NOT rewrite or invent new achievements.
    - Education
    - Skills: Prioritize JD keywords (list as: Python, AWS, React, etc. - NO years of experience)
    - Certifications
