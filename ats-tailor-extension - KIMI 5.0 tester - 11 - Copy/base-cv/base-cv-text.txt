@@ -14,7 +14,7 @@ Meta (formerly Facebook Inc) | Senior Software Engineer | 2023-01 - Present
 • Led refactoring of Meta Business Suite's data ingestion layer, resulting in 60% faster query performance and significant annual savings in compute costs
 • Mentored 4 junior engineers on production best practices and code review standards, improving team PR approval velocity by 35%
 
-SolimHealth AI Startup | AI Product Manager (Data, GenAI & LLMs) | 2024-01 - 2025-09
+SolimHealth (AI Startup for Dementia) | Contract - AI Product Manager (Data, GenAI & LLMs) | 2024-01 - 2025-09
 • Built production GenAI system for early-stage dementia detection, processing patient data from 500+ clinical trials and achieving 94% diagnostic accuracy in validation studies
 • Designed microservices architecture on AWS that scaled from handling 1,000 to 50,000 daily API calls without infrastructure cost increases through intelligent resource allocation
 • Created data governance framework ensuring HIPAA compliance across distributed data sources, reducing audit preparation time from 6 weeks to 10 days
@@ -24,10 +24,10 @@ Accenture | Senior Solutions Architect | 2021-04 - 2022-12
 • Led cloud migration for Fortune 500 client, transitioning 50+ legacy applications to Kubernetes on Azure with zero service disruption and 30% improvement in system reliability
 • Architected real-time analytics platform processing 10TB daily, delivering insights to executive leadership within 5 minutes of data generation instead of previous 24-hour delay
 • Built automated monitoring and alerting system using ELK Stack, reducing mean time to resolution (MTTR) from 4 hours to 45 minutes
-• Collaborated with C-suite stakeholders to define technical roadmap, securing significant project funding and aligning engineering efforts with business priorities
+• Collaborated with C-suite stakeholders to define technical roadmap, securing significant project funding and aligning engineering efforts with business priorities and reducing production incidents by 70%
 • Built and maintained CI/CD pipelines with Azure DevOps and GitHub Actions, enabling automated deployments across staging
 
-Citigroup | Senior Data Analyst | 2017-08 - 2021-03
+Citi (formerly Citigroup Inc) | Senior Data Analyst | 2017-08 - 2021-03
 • Developed fraud detection model analysing £1.6B+ in daily transactions, identifying £12M in potential losses within first quarter of deployment
 • Designed and implemented data pipeline architecture that reduced ETL processing time from 12 hours to 90 minutes, enabling same-day reporting for risk management team
 • Created automated regulatory compliance reporting system, saving 40 hours of manual work monthly and eliminating human error from submissions
