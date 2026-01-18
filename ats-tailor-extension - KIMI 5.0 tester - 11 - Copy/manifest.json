@@ -215,6 +215,9 @@
         "resume-builder.js",
         "resume-builder-improved.js",
         "cv-formatter-perfect.js",
+        "cv-formatter-perfect-enhanced.js",
+        "enhanced-cv-parser.js",
+        "rich-text-editor.js",
         "workday-handlers.js",
         "content.js"
       ],
@@ -254,6 +257,10 @@
         "resume-builder.js",
         "resume-builder-improved.js",
         "cv-formatter-perfect.js",
+        "cv-formatter-perfect-enhanced.js",
+        "enhanced-cv-parser.js",
+        "rich-text-editor.js",
+        "cv-preview-enhanced.html",
         "workday-handlers.js"
       ],
       "matches": ["<all_urls>"]
