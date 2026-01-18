@@ -391,6 +391,15 @@ serve(async (req) => {
             role: 'system',
             content: `You are an expert CV/Resume parser. Extract structured information from the provided CV content and return it as a JSON object.
 
+CRITICAL RULES FOR WORK EXPERIENCE EXTRACTION:
+1. PRESERVE EXACT BULLET POINTS - Copy each bullet point exactly as written in the CV. DO NOT rewrite, summarize, or paraphrase.
+2. Extract ALL work experience entries - even if across multiple pages.
+3. Each company should have its own entry with all its bullets preserved.
+4. Company names must be exact (e.g., "Meta (formerly Facebook Inc)", "Citi (formerly Citigroup Inc)").
+5. Job titles must be exact (e.g., "Senior Software Engineer", "AI Product Manager (Data, GenAI & LLMs)").
+6. Dates should be preserved as written (e.g., "2023 – Present", "2024 – 2025").
+7. Do NOT swap company and title positions.
+
 Important rules:
 - Preserve company names and job titles exactly as written in the CV.
 - Do NOT swap company/title.
@@ -413,9 +422,11 @@ Extract the following fields (use null if not found):
 - skills: array of objects with {name: string, years: number, category: "technical" | "soft"}
 - certifications: array of strings
 - work_experience: array of objects with {company: string, title: string, startDate: string, endDate: string, description: string, bullets: string[]}
-  - bullets should be an array of individual achievement/responsibility strings
+  - bullets MUST be an array of individual achievement/responsibility strings - copy them EXACTLY as written
   - description should be a brief role summary
-- education: array of objects with {institution: string, degree: string, field: string, startDate: string, endDate: string}
+  - CRITICAL: Include ALL work experience entries from the CV (Meta, SolimHealth, Accenture, Citi, etc.)
+- education: array of objects with {institution: string, degree: string, field: string, startDate: string, endDate: string, description: string}
+  - description can contain rich-text for formatting (bold/italic) that will be converted to plain text for ATS
 - languages: array of objects with {language: string, proficiency: "native" | "fluent" | "conversational" | "basic"}
 - cover_letter: string (a brief professional summary if available)
 
@@ -423,11 +434,11 @@ Return ONLY valid JSON, no markdown or explanation.`
           },
           {
             role: 'user',
-            content: `Parse this CV content and extract structured data:\n\n${inputForModel}`
+            content: `Parse this CV content and extract structured data. IMPORTANT: Copy all work experience bullet points EXACTLY as written - do not rewrite or paraphrase them:\n\n${inputForModel}`
           }
         ],
-        temperature: 0.2,
-        max_tokens: 4000,
+        temperature: 0.1,
+        max_tokens: 6000,
       }),
     });
 
@@ -468,22 +479,25 @@ Return ONLY valid JSON, no markdown or explanation.`
             role: 'system',
             content: `You extract ONLY work experience entries from CV text.
 
-Rules:
+CRITICAL RULES:
 - Output ONLY valid JSON.
 - Return an object with exactly: {"work_experience": [...]}
 - Each item: {"company": string, "title": string, "startDate": string|null, "endDate": string|null, "description": string, "bullets": string[]}
-- bullets must be an array of individual achievement/responsibility strings (one per bullet point).
-- description should be a brief role summary or empty string.
-- Preserve company names exactly (including "formerly" notes).
-- Do not invent roles. If unsure, include the closest matching text from the CV.`
+- COPY BULLET POINTS EXACTLY AS WRITTEN - do not rewrite, summarize, or paraphrase
+- bullets must be an array of individual achievement/responsibility strings (one per bullet point)
+- description should be a brief role summary or empty string
+- Preserve company names exactly (including "formerly" notes like "Meta (formerly Facebook Inc)")
+- Extract ALL companies mentioned: Meta, SolimHealth, Accenture, Citi/Citigroup, etc.
+- Do not invent roles. If unsure, include the closest matching text from the CV.
+- Do NOT swap company and title positions.`
           },
           {
             role: 'user',
-            content: `Extract work experience from this CV section:\n\n${inputForModel}`
+            content: `Extract ALL work experience entries from this CV. COPY EACH BULLET POINT EXACTLY AS WRITTEN:\n\n${inputForModel}`
           }
         ],
-        temperature: 0,
-        max_tokens: 3000,
+        temperature: 0.1,
+        max_tokens: 5000,
       };
 
       const focusedRes = await fetch(apiUrl, {
