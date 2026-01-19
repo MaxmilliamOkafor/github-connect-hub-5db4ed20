@@ -312,20 +312,16 @@ serve(async (req) => {
     // Fallback: if we couldn't extract readable text, warn user
     const base64Content = btoa(String.fromCharCode(...uint8Array.slice(0, 50000)));
 
-    // Focus the model on the most important part (work experience) to avoid empty results.
-    const focusedWorkExpText = textContent && textIsReadable ? getWorkExperienceFocusedText(textContent) : '';
+    // CRITICAL: Use FULL text content to capture all pages (Meta, SolimHealth, Accenture, Citi)
+    // Do NOT truncate or focus - we need the complete CV for multi-page documents
+    const usedInputType = textContent && textIsReadable && textContent.trim().length > 200
+      ? 'full_text'
+      : 'base64_snippet';
 
-    const usedInputType = focusedWorkExpText && focusedWorkExpText.trim().length > 200
-      ? 'focused_text'
-      : textContent && textIsReadable && textContent.trim().length > 200
-        ? 'extracted_text'
-        : 'base64_snippet';
-
-    const inputForModel = usedInputType === 'focused_text'
-      ? `CV_TEXT (focused on WORK EXPERIENCE):\n${focusedWorkExpText}`
-      : usedInputType === 'extracted_text'
-        ? `CV_TEXT (extracted):\n${textContent.substring(0, 30000)}`
-        : `CV_BASE64_SNIPPET (${mimeType}):\n${base64Content.substring(0, 40000)}`;
+    // Use full text up to 50k chars to ensure all work experience is captured
+    const inputForModel = usedInputType === 'full_text'
+      ? `CV_TEXT (COMPLETE DOCUMENT - ALL PAGES):\n${textContent.substring(0, 50000)}`
+      : `CV_BASE64_SNIPPET (${mimeType}):\n${base64Content.substring(0, 40000)}`;
 
     // Create a readable snippet for debug (sanitize binary garbage)
     const createReadableSnippet = (text: string): string => {
@@ -343,8 +339,8 @@ serve(async (req) => {
       usedInputType,
     } : null;
 
-    console.log('Using extracted text:', textIsReadable && textContent.length > 200);
-    console.log('Focused text length:', focusedWorkExpText.length);
+    console.log('Using full text:', textIsReadable && textContent.length > 200);
+    console.log('Full text length:', textContent.length);
     console.log('Used input type:', usedInputType);
     // Get user's API keys - prefer Kimi K2, fallback to OpenAI
     const { data: profileData } = await supabaseClient
@@ -392,13 +388,15 @@ serve(async (req) => {
             content: `You are an expert CV/Resume parser. Extract structured information from the provided CV content and return it as a JSON object.
 
 CRITICAL RULES FOR WORK EXPERIENCE EXTRACTION:
-1. PRESERVE EXACT BULLET POINTS - Copy each bullet point exactly as written in the CV. DO NOT rewrite, summarize, or paraphrase.
-2. Extract ALL work experience entries - even if across multiple pages.
-3. Each company should have its own entry with all its bullets preserved.
-4. Company names must be exact (e.g., "Meta (formerly Facebook Inc)", "Citi (formerly Citigroup Inc)").
-5. Job titles must be exact (e.g., "Senior Software Engineer", "AI Product Manager (Data, GenAI & LLMs)").
-6. Dates should be preserved as written (e.g., "2023 – Present", "2024 – 2025").
-7. Do NOT swap company and title positions.
+1. PRESERVE EXACT BULLET POINTS - Copy each bullet point VERBATIM as written in the CV. DO NOT rewrite, summarize, or paraphrase.
+2. Extract ALL work experience entries from ALL PAGES of the document. This is a MULTI-PAGE CV.
+3. You MUST extract ALL 4 companies: Meta, SolimHealth, Accenture, AND Citigroup/Citi. Missing any is a FAILURE.
+4. Each company should have its own entry with all its bullets preserved exactly.
+5. Company names: Use "Meta (formerly Facebook Inc)" for Meta, "Citi (formerly Citigroup Inc)" for Citi/Citigroup.
+6. Job titles must be exact (e.g., "Senior Software Engineer", "AI Product Manager").
+7. Dates should be preserved as written (e.g., "2023 – Present", "2024 – 2025", "2017 – 2021").
+8. Do NOT swap company and title positions.
+9. If you see "Citigroup" or "Citi", this is a SEPARATE role from Accenture - include BOTH.
 
 Important rules:
 - Preserve company names and job titles exactly as written in the CV.
@@ -486,8 +484,9 @@ CRITICAL RULES:
 - COPY BULLET POINTS EXACTLY AS WRITTEN - do not rewrite, summarize, or paraphrase
 - bullets must be an array of individual achievement/responsibility strings (one per bullet point)
 - description should be a brief role summary or empty string
-- Preserve company names exactly (including "formerly" notes like "Meta (formerly Facebook Inc)")
-- Extract ALL companies mentioned: Meta, SolimHealth, Accenture, Citi/Citigroup, etc.
+- Use "Meta (formerly Facebook Inc)" for Meta, "Citi (formerly Citigroup Inc)" for Citigroup/Citi
+- You MUST extract ALL 4 companies: Meta, SolimHealth, Accenture, AND Citi/Citigroup
+- The CV has MULTIPLE PAGES - Citigroup/Citi may be on page 2. Do NOT miss it.
 - Do not invent roles. If unsure, include the closest matching text from the CV.
 - Do NOT swap company and title positions.`
           },
