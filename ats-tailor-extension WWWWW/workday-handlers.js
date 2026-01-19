@@ -533,7 +533,7 @@
       
       // Look for manual experience entry
       const addExperienceBtn = document.querySelector('[data-automation-id="Add Work Experience"], button[aria-label*="Add Work Experience"]');
-      if (addExperienceBtn && profile.workExperience?.length > 0) {
+      if (addExperienceBtn && profile.professionalExperience?.length > 0) {
         console.log('[Workday] Found Add Work Experience button');
         // Would need to fill work experience entries
       }

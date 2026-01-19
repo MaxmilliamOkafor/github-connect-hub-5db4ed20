@@ -1,667 +1,654 @@
-// Enhanced CV Parser - Multi-page support with rich-text education
-// Handles PDF/DOCX parsing with improved work experience extraction
+// enhanced-cv-parser.js - Enhanced CV parser with multi-page PDF/DOCX support
+// FIXED: Implemented actual parsing functions instead of placeholders
 
-(function(global) {
-  'use strict';
+class EnhancedCVParser {
+  constructor() {
+    this.supportedFormats = ['pdf', 'docx', 'txt', 'rtf'];
+    this.maxFileSize = 10 * 1024 * 1024; // 10MB
+    this.parsers = {
+      pdf: this.parsePDF.bind(this),
+      docx: this.parseDOCX.bind(this),
+      txt: this.parseTXT.bind(this),
+      rtf: this.parseRTF.bind(this)
+    };
+  }
 
-  const EnhancedCVParser = {
+  // ============ MAIN PARSING METHOD ============
+  
+  async parseCV(file, options = {}) {
+    try {
+      // Validate file
+      this.validateFile(file);
+      
+      // Detect format
+      const format = this.detectFormat(file);
+      if (!this.supportedFormats.includes(format)) {
+        throw new Error(`Unsupported file format: ${format}`);
+      }
+      
+      // Parse based on format
+      const parser = this.parsers[format];
+      if (!parser) {
+        throw new Error(`No parser available for format: ${format}`);
+      }
+      
+      const parsedData = await parser(file, options);
+      
+      // Normalize and enhance the data
+      return this.normalizeParsedData(parsedData);
+      
+    } catch (error) {
+      console.error('[CVParser] Error parsing CV:', error);
+      return {
+        success: false,
+        error: error.message,
+        data: null
+      };
+    }
+  }
+
+  // ============ FILE VALIDATION ============
+  
+  validateFile(file) {
+    if (!file) {
+      throw new Error('No file provided');
+    }
     
-    // ============ MAIN ENTRY POINT - PARSE CV FILE ============
-    async parseCVFile(file, options = {}) {
-      const startTime = performance.now();
-      console.log('[EnhancedCVParser] Parsing CV file...');
+    if (file.size > this.maxFileSize) {
+      throw new Error(`File too large. Maximum size: ${this.maxFileSize / (1024*1024)}MB`);
+    }
+    
+    if (!file.type && !file.name) {
+      throw new Error('Invalid file object');
+    }
+  }
 
-      try {
-        const fileContent = await this.readFileContent(file);
-        const fileType = this.detectFileType(file.name);
+  // ============ FORMAT DETECTION ============
+  
+  detectFormat(file) {
+    // Check MIME type
+    if (file.type) {
+      const mimeMap = {
+        'application/pdf': 'pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'text/plain': 'txt',
+        'application/rtf': 'rtf',
+        'text/rtf': 'rtf'
+      };
+      
+      if (mimeMap[file.type]) {
+        return mimeMap[file.type];
+      }
+    }
+    
+    // Fallback to file extension
+    if (file.name) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (this.supportedFormats.includes(ext)) {
+        return ext;
+      }
+    }
+    
+    // Default to txt for text files
+    if (file.type && file.type.startsWith('text/')) {
+      return 'txt';
+    }
+    
+    throw new Error('Unable to determine file format');
+  }
+
+  // ============ PDF PARSING ============
+  
+  async parsePDF(file, options = {}) {
+    try {
+      // Check if PDF.js is available
+      if (typeof pdfjsLib === 'undefined') {
+        throw new Error('PDF.js library not available');
+      }
+      
+      // Read file as ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Load PDF document
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      const pages = [];
+      let fullText = '';
+      
+      // Extract text from each page
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
         
-        let parsedData;
-        if (fileType === 'pdf') {
-          parsedData = await this.parsePDF(fileContent, options);
-        } else if (fileType === 'docx') {
-          parsedData = await this.parseDOCX(fileContent, options);
-        } else {
-          // Fallback to text parsing
-          parsedData = this.parseText(fileContent);
-        }
-
-        // Enhance the parsed data with better structure
-        const enhancedData = this.enhanceParsedData(parsedData);
-
-        const timing = performance.now() - startTime;
-        console.log(`[EnhancedCVParser] CV parsed in ${timing.toFixed(0)}ms`);
-
-        return {
-          success: true,
-          data: enhancedData,
-          timing,
-          fileType,
-          pages: parsedData.pages || 1
-        };
-
-      } catch (error) {
-        console.error('[EnhancedCVParser] Error parsing CV:', error);
-        return {
-          success: false,
-          error: error.message,
-          data: null
-        };
-      }
-    },
-
-    // ============ FILE READING ============
-    async readFileContent(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(new Error('Failed to read file'));
-        reader.readAsArrayBuffer(file);
-      });
-    },
-
-    detectFileType(filename) {
-      const ext = filename.toLowerCase().split('.').pop();
-      if (ext === 'pdf') return 'pdf';
-      if (ext === 'docx') return 'docx';
-      if (ext === 'doc') return 'doc';
-      return 'text';
-    },
-
-    // ============ PDF PARSING (Multi-page support) ============
-    async parsePDF(arrayBuffer, options = {}) {
-      console.log('[EnhancedCVParser] Parsing PDF with multi-page support...');
-      
-      // This would integrate with a PDF library like pdf-lib or pdf-parse
-      // For now, return a structured placeholder
-      return {
-        text: await this.extractPDFText(arrayBuffer),
-        pages: await this.getPDFPageCount(arrayBuffer),
-        metadata: await this.getPDFMetadata(arrayBuffer)
-      };
-    },
-
-    async extractPDFText(arrayBuffer) {
-      // Placeholder for PDF text extraction
-      // In a real implementation, this would use a PDF parsing library
-      return "Extracted PDF text content...";
-    },
-
-    async getPDFPageCount(arrayBuffer) {
-      // Extract page count from PDF
-      const bytes = new Uint8Array(arrayBuffer);
-      const text = new TextDecoder().decode(bytes.slice(0, 1000));
-      const match = text.match(/\/Type\s*\/Pages[^\/]*\/Count\s+(\d+)/);
-      return match ? parseInt(match[1]) : 1;
-    },
-
-    async getPDFMetadata(arrayBuffer) {
-      return {
-        title: '',
-        author: '',
-        pages: await this.getPDFPageCount(arrayBuffer)
-      };
-    },
-
-    // ============ DOCX PARSING (Multi-page support) ============
-    async parseDOCX(arrayBuffer, options = {}) {
-      console.log('[EnhancedCVParser] Parsing DOCX with multi-page support...');
-      
-      // This would integrate with a DOCX parsing library
-      return {
-        text: await this.extractDOCXText(arrayBuffer),
-        pages: 1, // DOCX doesn't have fixed page count without rendering
-        metadata: await this.getDOCXMetadata(arrayBuffer)
-      };
-    },
-
-    async extractDOCXText(arrayBuffer) {
-      // Placeholder for DOCX text extraction
-      return "Extracted DOCX text content...";
-    },
-
-    async getDOCXMetadata(arrayBuffer) {
-      return {
-        title: '',
-        author: '',
-        pages: 1
-      };
-    },
-
-    // ============ TEXT PARSING (Enhanced) ============
-    parseText(textContent) {
-      console.log('[EnhancedCVParser] Parsing text content...');
-      
-      const sections = {
-        contact: {},
-        summary: '',
-        experience: [],
-        education: [],
-        skills: '',
-        certifications: ''
-      };
-
-      // Normalize line endings and clean text
-      const normalizedText = this.normalizeText(textContent);
-      const lines = normalizedText.split('\n');
-
-      // Parse sections using enhanced logic
-      const parsedSections = this.parseSections(lines);
-      
-      return {
-        text: normalizedText,
-        sections: parsedSections,
-        pages: 1
-      };
-    },
-
-    normalizeText(text) {
-      return text
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-    },
-
-    // ============ ENHANCED SECTION PARSING ============
-    parseSections(lines) {
-      const sections = {
-        contact: {},
-        summary: '',
-        experience: [],
-        education: [],
-        skills: '',
-        certifications: ''
-      };
-
-      let currentSection = '';
-      let currentContent = [];
-      let currentJob = null;
-
-      // Enhanced section headers mapping
-      const sectionHeaders = {
-        'PROFESSIONAL SUMMARY': 'summary',
-        'SUMMARY': 'summary',
-        'PROFILE': 'summary',
-        'OBJECTIVE': 'summary',
-        'WORK EXPERIENCE': 'experience',
-        'EXPERIENCE': 'experience',
-        'EMPLOYMENT': 'experience',
-        'PROFESSIONAL EXPERIENCE': 'experience',
-        'CAREER HISTORY': 'experience',
-        'EDUCATION': 'education',
-        'ACADEMIC': 'education',
-        'ACADEMIC BACKGROUND': 'education',
-        'SKILLS': 'skills',
-        'TECHNICAL SKILLS': 'skills',
-        'CORE SKILLS': 'skills',
-        'KEY SKILLS': 'skills',
-        'COMPETENCIES': 'skills',
-        'CERTIFICATIONS': 'certifications',
-        'LICENSES': 'certifications',
-        'CREDENTIALS': 'certifications'
-      };
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        const upperTrimmed = trimmed.toUpperCase().replace(/[:\s]+$/, '');
-
-        // Check for section header (more flexible matching)
-        if (this.isSectionHeader(upperTrimmed, sectionHeaders)) {
-          // Save previous section
-          this.saveParsedSection(sections, currentSection, currentContent, currentJob);
-          
-          currentSection = this.getSectionType(upperTrimmed, sectionHeaders);
-          currentContent = [];
-          currentJob = null;
-        } else if (currentSection) {
-          currentContent.push(line);
-        }
-      }
-
-      // Save final section
-      this.saveParsedSection(sections, currentSection, currentContent, currentJob);
-
-      return sections;
-    },
-
-    isSectionHeader(text, sectionHeaders) {
-      // Exact match
-      if (sectionHeaders[text]) return true;
-      
-      // Fuzzy match for common variations
-      const fuzzyPatterns = [
-        /^(PROFESSIONAL\s+)?SUMMARY$/i,
-        /^(WORK\s+)?EXPERIENCE$/i,
-        /^(PROFESSIONAL\s+)?EXPERIENCE$/i,
-        /^(CAREER\s+)?HISTORY$/i,
-        /^(ACADEMIC\s+)?BACKGROUND$/i,
-        /^(TECHNICAL\s+)?SKILLS$/i,
-        /^(KEY\s+)?COMPETENCIES$/i
-      ];
-      
-      return fuzzyPatterns.some(pattern => pattern.test(text));
-    },
-
-    getSectionType(text, sectionHeaders) {
-      // Try exact match first
-      if (sectionHeaders[text]) return sectionHeaders[text];
-      
-      // Fuzzy matching
-      if (/summary/i.test(text)) return 'summary';
-      if (/experience|history|employment/i.test(text)) return 'experience';
-      if (/education|academic/i.test(text)) return 'education';
-      if (/skills|competencies/i.test(text)) return 'skills';
-      if (/certification|license|credential/i.test(text)) return 'certifications';
-      
-      return '';
-    },
-
-    saveParsedSection(sections, section, content, currentJob) {
-      if (!section || content.length === 0) return;
-
-      const text = content.join('\n').trim();
-
-      switch (section) {
-        case 'summary':
-          sections.summary = text;
-          break;
-        case 'experience':
-          sections.experience = this.parseExperienceEnhanced(text);
-          break;
-        case 'education':
-          sections.education = this.parseEducationEnhanced(text);
-          break;
-        case 'skills':
-          sections.skills = text;
-          break;
-        case 'certifications':
-          sections.certifications = text;
-          break;
-      }
-    },
-
-    // ============ ENHANCED EXPERIENCE PARSING ============
-    parseExperienceEnhanced(text) {
-      const jobs = [];
-      const lines = text.split('\n');
-      let currentJob = null;
-      let bulletBuffer = [];
-
-      // Enhanced patterns for detecting job entries
-      const jobTitlePatterns = [
-        // Company | Title | Dates format
-        /^([A-Z][A-Za-z\s&.,'()-]+(?:Inc|LLC|Corp|Corporation|Company|Co|PLC|Group|Holdings|Partners|Technologies|Solutions|Consulting|Services|Startup)?)\s*\|\s*([A-Z][A-Za-z\s&.,'()-]+)\s*\|\s*(.+)$/,
-        // Title at Company format
-        /^([A-Z][A-Za-z\s&.,'()-]+)\s+at\s+([A-Z][A-Za-z\s&.,'()-]+)$/i,
-        // Company - Title - Dates format
-        /^([A-Z][A-Za-z\s&.,'()-]+)\s*[-–—]\s*([A-Z][A-Za-z\s&.,'()-]+)\s*[-–—]\s*(.+)$/
-      ];
-
-      // Company name patterns (well-known companies)
-      const knownCompanies = new Set([
-        'Meta', 'Facebook', 'Google', 'Amazon', 'Microsoft', 'Apple', 'Netflix',
-        'SolimHealth', 'Accenture', 'Citi', 'Citigroup', 'JPMorgan', 'Goldman Sachs',
-        'Oracle', 'IBM', 'Salesforce', 'Adobe', 'Intel', 'NVIDIA', 'Tesla'
-      ]);
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          // Flush bullet buffer if we have a current job
-          if (currentJob && bulletBuffer.length > 0) {
-            currentJob.bullets.push(...bulletBuffer);
-            bulletBuffer = [];
-          }
-          continue;
-        }
-
-        // Check if this is a job header line
-        let isJobHeader = false;
+        const pageText = textContent.items
+          .map(item => item.str)
+          .join(' ')
+          .trim();
         
-        // Test pattern 1: Company | Title | Dates
-        let match = trimmed.match(jobTitlePatterns[0]);
-        if (match) {
-          isJobHeader = true;
-          if (currentJob) jobs.push(currentJob);
-          
-          currentJob = {
-            company: match[1].trim(),
-            title: match[2].trim(),
-            dates: match[3].trim(),
-            location: '',
-            bullets: []
-          };
-        }
-
-        // Test pattern 2: Title at Company
-        if (!isJobHeader) {
-          match = trimmed.match(jobTitlePatterns[1]);
-          if (match) {
-            isJobHeader = true;
-            if (currentJob) jobs.push(currentJob);
-            
-            currentJob = {
-              company: match[2].trim(),
-              title: match[1].trim(),
-              dates: '',
-              location: '',
-              bullets: []
-            };
-          }
-        }
-
-        // Test pattern 3: Company - Title - Dates
-        if (!isJobHeader) {
-          match = trimmed.match(jobTitlePatterns[2]);
-          if (match) {
-            isJobHeader = true;
-            if (currentJob) jobs.push(currentJob);
-            
-            currentJob = {
-              company: match[1].trim(),
-              title: match[2].trim(),
-              dates: match[3].trim(),
-              location: '',
-              bullets: []
-            };
-          }
-        }
-
-        // Check for known company names that might not match patterns exactly
-        if (!isJobHeader && knownCompanies.has(trimmed.split(' ')[0])) {
-          const companyName = trimmed.split(' ')[0];
-          const rest = trimmed.substring(companyName.length).trim();
-          
-          // Try to extract title and dates from the rest
-          const titleMatch = rest.match(/^\s*[-—|]\s*([A-Z][A-Za-z\s&.,'()-]+)\s*[-—|]\s*(.+)$/);
-          if (titleMatch) {
-            isJobHeader = true;
-            if (currentJob) jobs.push(currentJob);
-            
-            currentJob = {
-              company: companyName,
-              title: titleMatch[1].trim(),
-              dates: titleMatch[2].trim(),
-              location: '',
-              bullets: []
-            };
-          }
-        }
-
-        // If not a job header, it might be a bullet point or location info
-        if (!isJobHeader && currentJob) {
-          // Check for bullet points
-          if (/^[-•*▪]/.test(trimmed)) {
-            const bullet = trimmed.replace(/^[-•*▪]\s*/, '').trim();
-            if (bullet) bulletBuffer.push(bullet);
-          } 
-          // Check for location line (might come after job header)
-          else if (/^[A-Z][a-zA-Z\s,]+$/.test(trimmed) && !currentJob.location) {
-            currentJob.location = trimmed;
-          }
-          // Any other line might be part of a multi-line bullet
-          else if (bulletBuffer.length > 0) {
-            const lastBullet = bulletBuffer[bulletBuffer.length - 1];
-            if (lastBullet.endsWith('-') || lastBullet.endsWith(',')) {
-              bulletBuffer[bulletBuffer.length - 1] = lastBullet + ' ' + trimmed;
-            } else {
-              bulletBuffer.push(trimmed);
-            }
-          }
-        }
+        pages.push({
+          number: i,
+          text: pageText,
+          items: textContent.items
+        });
+        
+        fullText += pageText + '\n\n';
       }
-
-      // Don't forget the last job
-      if (currentJob) {
-        if (bulletBuffer.length > 0) {
-          currentJob.bullets.push(...bulletBuffer);
-        }
-        jobs.push(currentJob);
-      }
-
-      return jobs;
-    },
-
-    // ============ ENHANCED EDUCATION PARSING ============
-    parseEducationEnhanced(text) {
-      const education = [];
-      const lines = text.split('\n');
-      let currentEntry = null;
-
-      // Education entry patterns
-      const degreePatterns = [
-        // Degree - Institution - GPA format
-        /^([A-Z][A-Za-z\s&.,'()-]+(?:Degree|Bachelor|Master|PhD|Doctorate|Diploma|Certificate))\s*[-–—|]\s*([A-Z][A-Za-z\s&.,'()-]+)\s*[-–—|]\s*(.+)$/,
-        // Institution | Degree | GPA format
-        /^([A-Z][A-Za-z\s&.,'()-]+(?:University|College|Institute|School|Academy))\s*\|\s*([A-Z][A-Za-z\s&.,'()-]+)\s*\|\s*(.+)$/,
-        // Just degree and institution
-        /^([A-Z][A-Za-z\s&.,'()-]+)\s*[-–—|]\s*([A-Z][A-Za-z\s&.,'()-]+(?:University|College|Institute|School|Academy))$/
-      ];
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          if (currentEntry) {
-            education.push(currentEntry);
-            currentEntry = null;
-          }
-          continue;
-        }
-
-        // Try to match education entry patterns
-        let match = trimmed.match(degreePatterns[0]);
-        if (match) {
-          if (currentEntry) education.push(currentEntry);
-          
-          currentEntry = {
-            degree: match[1].trim(),
-            institution: match[2].trim(),
-            gpa: this.extractGPA(match[3]),
-            dates: this.extractDates(match[3]),
-            description: this.extractDescription(match[3])
-          };
-          continue;
-        }
-
-        match = trimmed.match(degreePatterns[1]);
-        if (match) {
-          if (currentEntry) education.push(currentEntry);
-          
-          currentEntry = {
-            institution: match[1].trim(),
-            degree: match[2].trim(),
-            gpa: this.extractGPA(match[3]),
-            dates: this.extractDates(match[3]),
-            description: this.extractDescription(match[3])
-          };
-          continue;
-        }
-
-        match = trimmed.match(degreePatterns[2]);
-        if (match) {
-          if (currentEntry) education.push(currentEntry);
-          
-          currentEntry = {
-            degree: match[1].trim(),
-            institution: match[2].trim(),
-            gpa: '',
-            dates: '',
-            description: ''
-          };
-          continue;
-        }
-
-        // If no match, it might be additional info for current entry
-        if (currentEntry) {
-          // Try to extract GPA from standalone line
-          const gpaMatch = trimmed.match(/GPA:\s*(\d+\.?\d*)/i);
-          if (gpaMatch && !currentEntry.gpa) {
-            currentEntry.gpa = gpaMatch[1];
-          }
-          // Try to extract dates
-          else if (/\d{4}/.test(trimmed) && !currentEntry.dates) {
-            currentEntry.dates = trimmed;
-          }
-          // Anything else might be description
-          else if (!trimmed.match(/^Module|Course/i)) {
-            if (currentEntry.description) {
-              currentEntry.description += ' ' + trimmed;
-            } else {
-              currentEntry.description = trimmed;
-            }
-          }
-        }
-      }
-
-      // Don't forget the last entry
-      if (currentEntry) {
-        education.push(currentEntry);
-      }
-
-      return education;
-    },
-
-    extractGPA(text) {
-      const match = text.match(/GPA:\s*(\d+\.?\d*)/i);
-      return match ? match[1] : '';
-    },
-
-    extractDates(text) {
-      const match = text.match(/(\d{4})\s*[-–—]\s*(\d{4}|Present|Current)/i);
-      return match ? `${match[1]} - ${match[2]}` : '';
-    },
-
-    extractDescription(text) {
-      // Remove GPA and dates, return the rest as description
-      let desc = text.replace(/GPA:\s*\d+\.?\d*/gi, '').trim();
-      desc = desc.replace(/\d{4}\s*[-–—]\s*(\d{4}|Present|Current)/gi, '').trim();
-      desc = desc.replace(/^[-–—|]\s*/, '').trim();
-      return desc;
-    },
-
-    // ============ ENHANCE PARSED DATA ============
-    enhanceParsedData(parsedData) {
-      const enhanced = {
-        contact: {},
-        summary: '',
-        experience: [],
-        education: [],
-        skills: '',
-        certifications: '',
+      
+      // Parse structured data from text
+      const structuredData = this.parseStructuredData(fullText);
+      
+      return {
+        format: 'pdf',
+        pages: pages.length,
+        fullText: fullText,
+        structured: structuredData,
         metadata: {
-          pages: parsedData.pages || 1,
-          fileType: parsedData.fileType || 'text',
+          filename: file.name,
+          fileSize: file.size,
           parsedAt: new Date().toISOString()
         }
       };
+      
+    } catch (error) {
+      console.error('[CVParser] PDF parsing error:', error);
+      throw new Error(`Failed to parse PDF: ${error.message}`);
+    }
+  }
 
-      // Copy over basic sections
-      if (parsedData.sections) {
-        enhanced.summary = parsedData.sections.summary || '';
-        enhanced.skills = parsedData.sections.skills || '';
-        enhanced.certifications = parsedData.sections.certifications || '';
-        enhanced.experience = parsedData.sections.experience || [];
-        enhanced.education = parsedData.sections.education || [];
+  // ============ DOCX PARSING ============
+  
+  async parseDOCX(file, options = {}) {
+    try {
+      // Check if mammoth.js is available
+      if (typeof mammoth === 'undefined') {
+        throw new Error('mammoth.js library not available');
       }
-
-      // Extract contact info from first lines if available
-      if (parsedData.text) {
-        const firstLines = parsedData.text.split('\n').slice(0, 5);
-        enhanced.contact = this.extractContactInfo(firstLines.join('\n'));
-      }
-
-      return enhanced;
-    },
-
-    extractContactInfo(text) {
-      const contact = {
-        name: '',
-        email: '',
-        phone: '',
-        location: '',
-        linkedin: '',
-        github: ''
+      
+      // Read file as ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Extract text using mammoth
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      const fullText = result.value;
+      
+      // Also extract HTML for better parsing
+      const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+      const htmlContent = htmlResult.value;
+      
+      // Parse structured data
+      const structuredData = this.parseStructuredData(fullText);
+      
+      return {
+        format: 'docx',
+        fullText: fullText,
+        htmlContent: htmlContent,
+        structured: structuredData,
+        metadata: {
+          filename: file.name,
+          fileSize: file.size,
+          parsedAt: new Date().toISOString()
+        }
       };
+      
+    } catch (error) {
+      console.error('[CVParser] DOCX parsing error:', error);
+      throw new Error(`Failed to parse DOCX: ${error.message}`);
+    }
+  }
 
-      // Extract name (first line, usually)
-      const lines = text.split('\n');
-      if (lines.length > 0) {
-        const firstLine = lines[0].trim();
-        if (firstLine && !firstLine.includes('@') && !firstLine.includes('+')) {
-          contact.name = firstLine;
+  // ============ TXT PARSING ============
+  
+  async parseTXT(file, options = {}) {
+    try {
+      // Read file as text
+      const text = await file.text();
+      
+      // Parse structured data
+      const structuredData = this.parseStructuredData(text);
+      
+      return {
+        format: 'txt',
+        fullText: text,
+        structured: structuredData,
+        metadata: {
+          filename: file.name,
+          fileSize: file.size,
+          parsedAt: new Date().toISOString()
+        }
+      };
+      
+    } catch (error) {
+      console.error('[CVParser] TXT parsing error:', error);
+      throw new Error(`Failed to parse TXT: ${error.message}`);
+    }
+  }
+
+  // ============ RTF PARSING ============
+  
+  async parseRTF(file, options = {}) {
+    try {
+      // Read file as text
+      const rtfText = await file.text();
+      
+      // Simple RTF to text conversion (remove RTF formatting)
+      const plainText = this.rtfToText(rtfText);
+      
+      // Parse structured data
+      const structuredData = this.parseStructuredData(plainText);
+      
+      return {
+        format: 'rtf',
+        fullText: plainText,
+        rtfContent: rtfText,
+        structured: structuredData,
+        metadata: {
+          filename: file.name,
+          fileSize: file.size,
+          parsedAt: new Date().toISOString()
+        }
+      };
+      
+    } catch (error) {
+      console.error('[CVParser] RTF parsing error:', error);
+      throw new Error(`Failed to parse RTF: ${error.message}`);
+    }
+  }
+
+  // ============ STRUCTURED DATA PARSING ============
+  
+  parseStructuredData(fullText) {
+    const data = {
+      personal: {},
+      summary: '',
+      experience: [],
+      education: [],
+      skills: [],
+      projects: [],
+      certifications: [],
+      languages: []
+    };
+    
+    const lines = fullText.split('\n').filter(line => line.trim());
+    
+    // Extract personal info (email, phone, etc.)
+    data.personal = this.extractPersonalInfo(lines);
+    
+    // Extract professional summary
+    data.summary = this.extractSummary(lines);
+    
+    // Extract work experience
+    data.experience = this.extractExperience(lines);
+    
+    // Extract education
+    data.education = this.extractEducation(lines);
+    
+    // Extract skills
+    data.skills = this.extractSkills(lines);
+    
+    // Extract projects
+    data.projects = this.extractProjects(lines);
+    
+    // Extract certifications
+    data.certifications = this.extractCertifications(lines);
+    
+    // Extract languages
+    data.languages = this.extractLanguages(lines);
+    
+    return data;
+  }
+
+  extractPersonalInfo(lines) {
+    const personal = {
+      name: '',
+      email: '',
+      phone: '',
+      location: '',
+      linkedin: '',
+      github: ''
+    };
+    
+    const fullText = lines.join(' ');
+    
+    // Extract email
+    const emailMatch = fullText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    if (emailMatch) personal.email = emailMatch[0];
+    
+    // Extract phone
+    const phoneMatch = fullText.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+    if (phoneMatch) personal.phone = phoneMatch[0];
+    
+    // Extract name (usually first line or in header)
+    if (lines.length > 0) {
+      const firstLine = lines[0].trim();
+      if (firstLine && !firstLine.includes('@') && !firstLine.match(/^\d/)) {
+        personal.name = firstLine;
+      }
+    }
+    
+    // Extract LinkedIn URL
+    const linkedinMatch = fullText.match(/linkedin\.com\/in\/[^\s]+/);
+    if (linkedinMatch) personal.linkedin = 'https://' + linkedinMatch[0];
+    
+    // Extract GitHub URL
+    const githubMatch = fullText.match(/github\.com\/[^\s]+/);
+    if (githubMatch) personal.github = 'https://' + githubMatch[0];
+    
+    // Extract location (city, state/country pattern)
+    const locationMatch = fullText.match(/([A-Z][a-z]+(?:,\s*[A-Z]{2})?\s*(?:USA|United States|UK|Canada|Australia)?)/);
+    if (locationMatch) personal.location = locationMatch[0];
+    
+    return personal;
+  }
+
+  extractSummary(lines) {
+    // Look for summary section
+    const summaryKeywords = ['summary', 'objective', 'profile', 'about'];
+    let summary = '';
+    let inSummary = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+      
+      if (summaryKeywords.some(keyword => line.includes(keyword))) {
+        inSummary = true;
+        continue;
+      }
+      
+      if (inSummary) {
+        // Check if we've moved to next section
+        if (this.isSectionHeader(line)) {
+          break;
+        }
+        summary += lines[i] + ' ';
+      }
+    }
+    
+    return summary.trim();
+  }
+
+  extractExperience(lines) {
+    const experience = [];
+    let currentExp = null;
+    let inExperience = false;
+    
+    const expKeywords = ['experience', 'employment', 'work history', 'career'];
+    const datePattern = /\d{4}|(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      // Detect experience section
+      if (expKeywords.some(keyword => lowerLine.includes(keyword))) {
+        inExperience = true;
+        continue;
+      }
+      
+      // Skip if not in experience section
+      if (!inExperience) continue;
+      
+      // Check if we've moved to next section
+      if (this.isSectionHeader(lowerLine) && !expKeywords.some(k => lowerLine.includes(k))) {
+        if (currentExp) experience.push(currentExp);
+        break;
+      }
+      
+      // Detect new job entry (has company name and date)
+      if (datePattern.test(line) && (line.includes(' at ') || line.includes(' - ') || line.includes('|'))) {
+        if (currentExp) experience.push(currentExp);
+        
+        const parts = line.split(/\||\-| at /);
+        currentExp = {
+          company: parts[0].trim(),
+          title: parts[1]?.trim() || '',
+          dates: parts[2]?.trim() || '',
+          bullets: []
+        };
+      } else if (currentExp && line.trim().startsWith('•')) {
+        // Bullet point
+        currentExp.bullets.push(line.trim().substring(1).trim());
+      }
+    }
+    
+    if (currentExp) experience.push(currentExp);
+    return experience;
+  }
+
+  extractEducation(lines) {
+    const education = [];
+    let inEducation = false;
+    
+    const eduKeywords = ['education', 'academic', 'university', 'college', 'degree'];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      if (eduKeywords.some(keyword => lowerLine.includes(keyword))) {
+        inEducation = true;
+        continue;
+      }
+      
+      if (!inEducation) continue;
+      
+      if (this.isSectionHeader(lowerLine) && !eduKeywords.some(k => lowerLine.includes(k))) {
+        break;
+      }
+      
+      // Detect education entry
+      if (lowerLine.includes('university') || lowerLine.includes('college') || 
+          lowerLine.includes('bachelor') || lowerLine.includes('master') || 
+          lowerLine.includes('phd') || lowerLine.includes('degree')) {
+        education.push({
+          institution: line,
+          degree: lines[i + 1] || '',
+          field: lines[i + 2] || ''
+        });
+      }
+    }
+    
+    return education;
+  }
+
+  extractSkills(lines) {
+    const skills = [];
+    let inSkills = false;
+    
+    const skillKeywords = ['skills', 'technologies', 'tools', 'competencies'];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      if (skillKeywords.some(keyword => lowerLine.includes(keyword))) {
+        inSkills = true;
+        continue;
+      }
+      
+      if (!inSkills) continue;
+      
+      if (this.isSectionHeader(lowerLine) && !skillKeywords.some(k => lowerLine.includes(k))) {
+        break;
+      }
+      
+      // Split by common separators
+      const skillList = line.split(/[,;|]/).map(s => s.trim()).filter(s => s);
+      skillList.forEach(skill => {
+        if (skill && !this.isSectionHeader(skill.toLowerCase())) {
+          skills.push({ name: skill, level: 'Proficient' });
+        }
+      });
+    }
+    
+    return skills;
+  }
+
+  extractProjects(lines) {
+    const projects = [];
+    let inProjects = false;
+    
+    const projKeywords = ['projects', 'portfolio', 'personal projects'];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      if (projKeywords.some(keyword => lowerLine.includes(keyword))) {
+        inProjects = true;
+        continue;
+      }
+      
+      if (!inProjects) continue;
+      
+      if (this.isSectionHeader(lowerLine) && !projKeywords.some(k => lowerLine.includes(k))) {
+        break;
+      }
+      
+      // Simple project detection
+      if (line.includes(':') || line.includes('-')) {
+        const parts = line.split(/[:\-]/);
+        if (parts.length >= 2) {
+          projects.push({
+            name: parts[0].trim(),
+            description: parts[1].trim()
+          });
         }
       }
-
-      // Extract email
-      const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
-      if (emailMatch) contact.email = emailMatch[0];
-
-      // Extract phone
-      const phoneMatch = text.match(/\+?\d[\d\s-]{6,}\d/);
-      if (phoneMatch) contact.phone = phoneMatch[0];
-
-      // Extract LinkedIn
-      const linkedinMatch = text.match(/linkedin\.com\/in\/([\w-]+)/i);
-      if (linkedinMatch) contact.linkedin = `linkedin.com/in/${linkedinMatch[1]}`;
-
-      // Extract GitHub
-      const githubMatch = text.match(/github\.com\/([\w-]+)/i);
-      if (githubMatch) contact.github = `github.com/${githubMatch[1]}`;
-
-      return contact;
-    },
-
-    // ============ RICH-TEXT EDUCATION HANDLING ============
-    parseRichTextEducation(educationEntries) {
-      return educationEntries.map(entry => ({
-        ...entry,
-        richDescription: this.convertToRichText(entry.description || ''),
-        plainDescription: this.stripFormatting(entry.description || '')
-      }));
-    },
-
-    convertToRichText(text) {
-      // Convert markdown-style formatting to HTML
-      let html = text;
-      
-      // **bold** -> <strong>bold</strong>
-      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      
-      // *italic* -> <em>italic</em>
-      html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-      
-      // __bold__ -> <strong>bold</strong>
-      html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-      
-      // _italic_ -> <em>italic</em>
-      html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-      
-      return html;
-    },
-
-    stripFormatting(text) {
-      // Remove markdown formatting for plain text
-      let plain = text;
-      
-      // Remove **bold**
-      plain = plain.replace(/\*\*(.+?)\*\*/g, '$1');
-      
-      // Remove *italic*
-      plain = plain.replace(/\*(.+?)\*/g, '$1');
-      
-      // Remove __bold__
-      plain = plain.replace(/__(.+?)__/g, '$1');
-      
-      // Remove _italic_
-      plain = plain.replace(/_(.+?)_/g, '$1');
-      
-      return plain;
     }
-  };
+    
+    return projects;
+  }
+
+  extractCertifications(lines) {
+    const certifications = [];
+    let inCertifications = false;
+    
+    const certKeywords = ['certifications', 'certificates', 'licenses'];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      if (certKeywords.some(keyword => lowerLine.includes(keyword))) {
+        inCertifications = true;
+        continue;
+      }
+      
+      if (!inCertifications) continue;
+      
+      if (this.isSectionHeader(lowerLine) && !certKeywords.some(k => lowerLine.includes(k))) {
+        break;
+      }
+      
+      if (lowerLine.includes('certified') || lowerLine.includes('certificate')) {
+        certifications.push({
+          name: line,
+          issuer: '',
+          date: ''
+        });
+      }
+    }
+    
+    return certifications;
+  }
+
+  extractLanguages(lines) {
+    const languages = [];
+    let inLanguages = false;
+    
+    const langKeywords = ['languages', 'spoken languages', 'fluent'];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      if (langKeywords.some(keyword => lowerLine.includes(keyword))) {
+        inLanguages = true;
+        continue;
+      }
+      
+      if (!inLanguages) continue;
+      
+      if (this.isSectionHeader(lowerLine) && !langKeywords.some(k => lowerLine.includes(k))) {
+        break;
+      }
+      
+      // Common language patterns
+      const commonLanguages = ['english', 'spanish', 'french', 'german', 'chinese', 'japanese', 'korean'];
+      commonLanguages.forEach(lang => {
+        if (lowerLine.includes(lang)) {
+          languages.push({
+            name: lang.charAt(0).toUpperCase() + lang.slice(1),
+            proficiency: 'Proficient'
+          });
+        }
+      });
+    }
+    
+    return languages;
+  }
+
+  // ============ UTILITY METHODS ============
+  
+  isSectionHeader(line) {
+    const sectionKeywords = [
+      'experience', 'education', 'skills', 'projects', 'certifications',
+      'languages', 'summary', 'objective', 'references', 'contact'
+    ];
+    
+    return sectionKeywords.some(keyword => line.includes(keyword));
+  }
+
+  rtfToText(rtfText) {
+    // Simple RTF to text conversion
+    // Remove RTF control words and braces
+    let text = rtfText;
+    
+    // Remove RTF header
+    text = text.replace(/\\[a-z]+\d*\s*/g, '');
+    text = text.replace(/[{}]/g, '');
+    text = text.replace(/\\\s+/g, ' ');
+    
+    return text;
+  }
+
+  // ============ DATA NORMALIZATION ============
+  
+  normalizeParsedData(parsedData) {
+    return {
+      success: true,
+      data: parsedData.structured,
+      fullText: parsedData.fullText,
+      format: parsedData.format,
+      metadata: parsedData.metadata,
+      atsScore: this.calculateATSScore(parsedData.structured)
+    };
+  }
+
+  calculateATSScore(data) {
+    let score = 0;
+    
+    if (data.personal?.name) score += 10;
+    if (data.personal?.email) score += 10;
+    if (data.summary) score += 15;
+    if (data.experience?.length > 0) score += Math.min(data.experience.length * 5, 25);
+    if (data.education?.length > 0) score += 10;
+    if (data.skills?.length >= 5) score += 15;
+    else if (data.skills?.length > 0) score += data.skills.length * 2;
+    
+    return Math.min(score, 100);
+  }
 
   // ============ EXPORT ============
-  global.EnhancedCVParser = EnhancedCVParser;
+  
+  async extractFromFile(file, options = {}) {
+    return this.parseCV(file, options);
+  }
+}
 
-})(typeof window !== 'undefined' ? window : this);
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = EnhancedCVParser;
+} else if (typeof window !== 'undefined') {
+  window.EnhancedCVParser = EnhancedCVParser;
+}

@@ -295,9 +295,9 @@ serve(async (req) => {
         drawWrappedText(sanitizedData.summary, MARGIN, 10, helvetica);
       }
 
-      // === WORK EXPERIENCE ===
+      // === PROFESSIONAL EXPERIENCE ===
       if (sanitizedData.experience && sanitizedData.experience.length > 0) {
-        drawSectionHeader('Work Experience');
+        drawSectionHeader('Professional Experience');
         
         for (let i = 0; i < sanitizedData.experience.length; i++) {
           const exp = sanitizedData.experience[i];
@@ -675,7 +675,7 @@ async function handleRawContentRequest(body: {
     let contactLine = '';
     let linksLine = '';
     
-    const sectionHeaders = ['PROFESSIONAL SUMMARY', 'SUMMARY', 'EXPERIENCE', 'WORK EXPERIENCE', 'EDUCATION', 'SKILLS', 'TECHNICAL SKILLS', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS'];
+    const sectionHeaders = ['PROFESSIONAL SUMMARY', 'SUMMARY', 'PROFESSIONAL EXPERIENCE', 'EXPERIENCE', 'WORK EXPERIENCE', 'EDUCATION', 'SKILLS', 'TECHNICAL SKILLS', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS'];
     
     for (const line of lines) {
       const trimmed = line.trim();
@@ -769,7 +769,7 @@ async function handleRawContentRequest(body: {
       // Normalize section title
       let sectionTitle = section.type;
       if (sectionTitle.includes('SUMMARY')) sectionTitle = 'PROFESSIONAL SUMMARY';
-      if (sectionTitle.includes('EXPERIENCE')) sectionTitle = 'WORK EXPERIENCE';
+      if (sectionTitle.includes('EXPERIENCE')) sectionTitle = 'PROFESSIONAL EXPERIENCE';
       
       currentPage.drawText(sectionTitle, {
         x: MARGIN,

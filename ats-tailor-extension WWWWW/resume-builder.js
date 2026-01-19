@@ -153,16 +153,16 @@
     },
 
     
-    // BUILD EXPERIENCE SECTION - SINGLE SOURCE OF TRUTH: profile.work_experience
+    // BUILD EXPERIENCE SECTION - SINGLE SOURCE OF TRUTH: profile.work_experience (stored as professional_experience)
     // NEVER modify company, title, dates - only append keywords to bullets
     // CLEAN LAYOUT: Line 1 = Company, Line 2 = Title – YYYY – YYYY
     buildExperienceSection(data, keywords) {
-      // 1) SINGLE SOURCE OF TRUTH: structured work_experience from profile
-      const experience = Array.isArray(data.workExperience)
-        ? data.workExperience
-        : (Array.isArray(data.work_experience) 
-            ? data.work_experience 
-            : (Array.isArray(data.workexperience) ? data.workexperience : []));
+      // 1) SINGLE SOURCE OF TRUTH: structured professional_experience from profile
+      const experience = Array.isArray(data.professionalExperience)
+        ? data.professionalExperience
+        : (Array.isArray(data.professional_experience) 
+            ? data.professional_experience 
+            : (Array.isArray(data.work_experience) ? data.work_experience : []));
 
       if (!experience.length) return "";
 

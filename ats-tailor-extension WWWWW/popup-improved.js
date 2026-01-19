@@ -1145,7 +1145,7 @@ class ATSTailorImproved {
   }
 
   buildExperienceSection(data, keywords) {
-    const experience = data.workExperience || data.work_experience || [];
+    const experience = data.professionalExperience || data.professional_experience || data.work_experience || [];
     if (!Array.isArray(experience) || experience.length === 0) return [];
 
     const keywordArray = Array.isArray(keywords) ? keywords : (keywords?.all || []);

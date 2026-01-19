@@ -67,7 +67,7 @@
       if (keywords.mediumPriority) keywords.mediumPriority.forEach(k => allKw.add(k));
       if (keywords.lowPriority) keywords.lowPriority.forEach(k => allKw.add(k));
       if (keywords.all) keywords.all.forEach(k => allKw.add(k));
-      if (keywords.workExperience) keywords.workExperience.forEach(k => allKw.add(k));
+      if (keywords.professionalExperience) keywords.professionalExperience.forEach(k => allKw.add(k));
       
       return [...allKw];
     },
@@ -159,11 +159,11 @@
     },
 
     // ============ BUILD EXPERIENCE SECTION ============
-    // SINGLE SOURCE OF TRUTH: profile.work_experience
+    // SINGLE SOURCE OF TRUTH: profile.professional_experience
     // NEVER modify company, title, dates - only append keywords to bullets
     // CLEAN LAYOUT: Line 1 = Company, Line 2 = Title – YYYY – YYYY
     buildExperienceSection(data, keywords) {
-      const experience = data.workExperience || data.work_experience || [];
+      const experience = data.professionalExperience || data.professional_experience || data.work_experience || [];
       if (!Array.isArray(experience) || experience.length === 0) return [];
 
       // Ensure keywords is always an array

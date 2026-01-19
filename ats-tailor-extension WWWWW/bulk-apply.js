@@ -1,8 +1,8 @@
 // Bulk Apply Dashboard - ATS Tailor Extension
-// Sequential job application with Simplify ATS Score integration
+// Sequential job application with secure credential management
 
-const SUPABASE_URL = 'https://wntpldomgjutwufphnpg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudHBsZG9tZ2p1dHd1ZnBobnBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2MDY0NDAsImV4cCI6MjA4MjE4MjQ0MH0.vOXBQIg6jghsAby2MA1GfE-MNTRZ9Ny1W2kfUHGUzNM';
+// IMPORTANT: API keys should be configured through extension settings, NOT hardcoded
+// Use chrome.storage to store encrypted credentials
 
 class BulkApplier {
   constructor() {
@@ -16,15 +16,39 @@ class BulkApplier {
     this.startTime = null;
     this.currentTabId = null;
     this.session = null;
+    this.apiConfig = null;
 
     this.init();
   }
 
   async init() {
     await this.loadSession();
+    await this.loadAPIConfig();
     await this.loadState();
     this.bindEvents();
     this.updateUI();
+  }
+
+  async loadAPIConfig() {
+    // Load API configuration from secure storage
+    // DO NOT hardcode API keys here
+    try {
+      const result = await chrome.storage.local.get(['apiConfig']);
+      this.apiConfig = result.apiConfig || {
+        supabase: {
+          url: null, // Must be configured by user
+          anonKey: null // Must be configured by user
+        }
+      };
+    } catch (error) {
+      console.error('[BulkApply] Error loading API config:', error);
+      this.apiConfig = { supabase: { url: null, anonKey: null } };
+    }
+  }
+
+  async saveAPIConfig(config) {
+    this.apiConfig = config;
+    await chrome.storage.local.set({ apiConfig: config });
   }
 
   async loadSession() {
@@ -111,6 +135,48 @@ class BulkApplier {
       const logContainer = document.getElementById('logContainer');
       if (logContainer) logContainer.innerHTML = '<div class="log-entry info">Log cleared</div>';
     });
+
+    // API Configuration button
+    document.getElementById('apiConfigBtn')?.addEventListener('click', () => this.showAPIConfigDialog());
+  }
+
+  showAPIConfigDialog() {
+    const modal = document.getElementById('apiConfigModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      
+      // Pre-fill with existing config
+      document.getElementById('supabaseUrl').value = this.apiConfig.supabase?.url || '';
+      document.getElementById('supabaseKey').value = this.apiConfig.supabase?.anonKey || '';
+    }
+  }
+
+  async saveAPIConfig() {
+    const url = document.getElementById('supabaseUrl')?.value?.trim();
+    const key = document.getElementById('supabaseKey')?.value?.trim();
+
+    if (!url || !key) {
+      this.log('Please enter both Supabase URL and Anon Key', 'error');
+      return;
+    }
+
+    // Basic validation
+    if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
+      this.log('Invalid Supabase URL format', 'error');
+      return;
+    }
+
+    if (!key.startsWith('eyJ')) {
+      this.log('Invalid Supabase key format', 'error');
+      return;
+    }
+
+    await this.saveAPIConfig({
+      supabase: { url, anonKey: key }
+    });
+
+    this.log('API configuration saved securely', 'success');
+    document.getElementById('apiConfigModal')?.classList.add('hidden');
   }
 
   addManualUrls() {
@@ -143,15 +209,26 @@ class BulkApplier {
         email = result.ats_session.user.email || '';
         // Try to get profile data
         try {
+          // Check if API is configured
+          if (!this.apiConfig.supabase.url || !this.apiConfig.supabase.anonKey) {
+            this.log('API not configured. Please configure Supabase credentials first.', 'error');
+            return;
+          }
+
           const profileRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${result.ats_session.user.id}&select=first_name,last_name,email,phone`,
+            `${this.apiConfig.supabase.url}/rest/v1/profiles?user_id=eq.${result.ats_session.user.id}&select=first_name,last_name,email,phone`,
             {
               headers: {
-                apikey: SUPABASE_ANON_KEY,
+                apikey: this.apiConfig.supabase.anonKey,
                 Authorization: `Bearer ${result.ats_session.access_token}`,
               },
             }
           );
+          
+          if (!profileRes.ok) {
+            throw new Error(`API request failed: ${profileRes.status}`);
+          }
+          
           const profiles = await profileRes.json();
           if (profiles?.[0]) {
             candidateName = `${profiles[0].first_name || ''} ${profiles[0].last_name || ''}`.trim();
@@ -159,7 +236,8 @@ class BulkApplier {
             phone = profiles[0].phone || '';
           }
         } catch (e) {
-          console.log('Could not fetch profile for manual URLs');
+          console.error('[BulkApply] Error fetching profile:', e);
+          this.log('Could not fetch profile data. Using session info.', 'warning');
         }
       }
 
@@ -185,7 +263,7 @@ class BulkApplier {
       // Clear textarea
       if (textarea) textarea.value = '';
       
-      this.log(`✅ Added ${newJobs.length} job URL(s) to queue`, 'success');
+      this.log(`Added ${newJobs.length} job URL(s) to queue`, 'success');
     });
   }
 
@@ -282,6 +360,13 @@ class BulkApplier {
       return;
     }
 
+    // Check if API is configured
+    if (!this.apiConfig.supabase.url || !this.apiConfig.supabase.anonKey) {
+      this.log('API not configured. Please configure Supabase credentials first.', 'error');
+      this.showAPIConfigDialog();
+      return;
+    }
+
     const selectedJobs = this.jobs.filter(j => j.selected && j.status === 'pending');
     if (selectedJobs.length === 0) {
       this.log('No pending jobs selected', 'warning');
@@ -339,11 +424,11 @@ class BulkApplier {
         await this.applySingleJob(job);
         job.status = 'success';
         this.successCount++;
-        this.log(`✅ Successfully applied to ${this.truncateUrl(job.job_url)}`, 'success');
+        this.log(`Successfully applied to ${this.truncateUrl(job.job_url)}`, 'success');
       } catch (error) {
         job.status = 'failed';
         this.failedCount++;
-        this.log(`❌ Failed: ${job.job_url} - ${error.message}`, 'error');
+        this.log(`Failed: ${job.job_url} - ${error.message}`, 'error');
       }
 
       this.renderTable();
@@ -408,8 +493,8 @@ class BulkApplier {
     // Wait for ATS tailor to complete
     await this.sleep(5000);
 
-    // Calculate Simplify ATS Score
-    job.atsScore = await this.calculateSimplifyATSScore(job, tab.id);
+    // Calculate ATS Score (simplified - no API call)
+    job.atsScore = await this.calculateATSScore(job, tab.id);
     this.updateATSScorePanel(job.atsScore);
 
     // Close tab after processing
@@ -417,8 +502,9 @@ class BulkApplier {
     currentJobDisplay?.classList.add('hidden');
   }
 
-  async calculateSimplifyATSScore(job, tabId) {
-    // Simulate Simplify's proprietary Keyword Matcher methodology
+  async calculateATSScore(job, tabId) {
+    // Simplified ATS score calculation - no external API calls
+    // This is a mock implementation for demonstration
     const score = {
       keywordCoverage: Math.floor(Math.random() * 15) + 35, // 35-50
       missingKeywords: Math.floor(Math.random() * 10), // 0-10 penalty
@@ -462,7 +548,7 @@ class BulkApplier {
         list.innerHTML = score.missingKeywordsList.map(item => `
           <li>
             <strong>${item.keyword}</strong>
-            <span class="keyword-fix">✅ ${item.fix}</span>
+            <span class="keyword-fix">${item.fix}</span>
           </li>
         `).join('');
       }
@@ -621,4 +707,76 @@ class BulkApplier {
 let bulkApplier;
 document.addEventListener('DOMContentLoaded', () => {
   bulkApplier = new BulkApplier();
+  
+  // API Config modal handlers
+  document.getElementById('saveAPIConfigBtn')?.addEventListener('click', () => {
+    bulkApplier.saveAPIConfig();
+  });
+  
+  document.getElementById('cancelAPIConfigBtn')?.addEventListener('click', () => {
+    document.getElementById('apiConfigModal')?.classList.add('hidden');
+  });
 });
+
+// Add CSS for API Config Modal (should be in bulk-apply.css)
+const apiConfigStyles = `
+.api-config-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.api-config-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.api-config-content h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.api-config-content .form-group {
+  margin-bottom: 1rem;
+}
+
+.api-config-content label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.api-config-content input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.api-config-content .button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.hidden {
+  display: none !important;
+}
+`;
+
+// Inject styles
+const styleSheet = document.createElement('style');
+styleSheet.textContent = apiConfigStyles;
+document.head.appendChild(styleSheet);

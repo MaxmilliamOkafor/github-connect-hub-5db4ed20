@@ -112,8 +112,8 @@
         data.contact.portfolio = candidateData.portfolio || '';
         
         // Extract structured data if available
-        if (candidateData.workExperience || candidateData.work_experience) {
-          data.experience = (candidateData.workExperience || candidateData.work_experience).map(exp => ({
+        if (candidateData.professionalExperience || candidateData.professional_experience || candidateData.work_experience) {
+          data.experience = (candidateData.professionalExperience || candidateData.professional_experience || candidateData.work_experience).map(exp => ({
             company: exp.company || exp.organization || '',
             title: exp.title || exp.position || exp.role || '',
             dates: exp.dates || exp.duration || `${exp.startDate || ''} - ${exp.endDate || 'Present'}`,
