@@ -118,7 +118,6 @@
       "resources": [
         "icons/*",
         "*.css",
-        "welcome.html",
         "bulk-apply.html",
         "cv-preview-enhanced.html"
       ],
