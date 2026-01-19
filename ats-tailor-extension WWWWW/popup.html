@@ -163,6 +163,45 @@
         </div>
       </details>
 
+      <!-- Parse CV Debug Panel -->
+      <details class="debug-panel" id="parseCVDebugPanel">
+        <summary class="debug-header">
+          <span class="debug-icon">🔍</span>
+          <span>Parse CV Debug</span>
+          <span class="debug-status" id="parseCVStatus">—</span>
+        </summary>
+        <div class="debug-content" id="parseCVDebugContent">
+          <div class="debug-row">
+            <span class="debug-label">File Type:</span>
+            <span class="debug-value" id="debugFileType">—</span>
+          </div>
+          <div class="debug-row">
+            <span class="debug-label">File Size:</span>
+            <span class="debug-value" id="debugFileSize">—</span>
+          </div>
+          <div class="debug-row">
+            <span class="debug-label">Extracted Text Length:</span>
+            <span class="debug-value" id="debugTextLength">—</span>
+          </div>
+          <div class="debug-row">
+            <span class="debug-label">Work Experiences Found:</span>
+            <span class="debug-value" id="debugExperienceCount">—</span>
+          </div>
+          <div class="debug-row">
+            <span class="debug-label">Parse Time:</span>
+            <span class="debug-value" id="debugParseTime">—</span>
+          </div>
+          <div class="debug-snippet-section">
+            <span class="debug-label">Text Snippet (first 500 chars):</span>
+            <pre class="debug-snippet" id="debugTextSnippet">—</pre>
+          </div>
+          <button id="reparseCV" class="btn btn-small btn-outline" title="Re-parse CV from profile">
+            <span class="btn-icon">🔄</span>
+            <span class="btn-text">Re-parse CV</span>
+          </button>
+        </div>
+      </details>
+
       <!-- Main Actions Card -->
       <div class="actions-card">
         <!-- Primary Action Button -->
