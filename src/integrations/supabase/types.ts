@@ -86,6 +86,63 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          certifications: Json | null
+          created_at: string
+          cv_file_url: string | null
+          cv_parsed_at: string | null
+          education: Json | null
+          email: string | null
+          full_name: string | null
+          id: string
+          languages: Json | null
+          location: string | null
+          phone: string | null
+          professional_experience: Json | null
+          skills: Json | null
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certifications?: Json | null
+          created_at?: string
+          cv_file_url?: string | null
+          cv_parsed_at?: string | null
+          education?: Json | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          languages?: Json | null
+          location?: string | null
+          phone?: string | null
+          professional_experience?: Json | null
+          skills?: Json | null
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certifications?: Json | null
+          created_at?: string
+          cv_file_url?: string | null
+          cv_parsed_at?: string | null
+          education?: Json | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          languages?: Json | null
+          location?: string | null
+          phone?: string | null
+          professional_experience?: Json | null
+          skills?: Json | null
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
