@@ -1,8 +1,8 @@
 // ATS Tailored CV & Cover Letter - Popup Script
 // Uses same approach as chrome-extension for reliable job detection
 
-const SUPABASE_URL = 'https://wntpldomgjutwufphnpg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudHBsZG9tZ2p1dHd1ZnBobnBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2MDY0NDAsImV4cCI6MjA4MjE4MjQ0MH0.vOXBQIg6jghsAby2MA1GfE-MNTRZ9Ny1W2kfUHGUzNM';
+const SUPABASE_URL = 'https://siwxacsqjrakbohzdtkx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpd3hhY3NxanJha2JvaHpkdGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1ODg1NzcsImV4cCI6MjA4NDE2NDU3N30.hlqtIQ50WtyIIhj8IQ4YCGbSa-yryV1CD1NQlaN7XO0';
 
 // ============ TIER 1-2 TECH COMPANY DETECTION (70+ companies) ============
 const TIER1_TECH_COMPANIES = {
@@ -121,6 +121,7 @@ class ATSTailor {
     await this.loadAIProviderSettings();
     await this.loadWorkdayState();
     await this.loadBaseCVFromProfile();
+    await this.loadParseCVDebug();
     this.bindEvents();
     this.updateUI();
     this.updateAIProviderUI();
@@ -130,6 +131,18 @@ class ATSTailor {
       await this.refreshSessionIfNeeded();
       await this.detectCurrentJob();
     }
+  }
+  
+  // ============ PARSE CV DEBUG LOADER ============
+  async loadParseCVDebug() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['parseCVDebug'], (result) => {
+        if (result.parseCVDebug) {
+          this.updateParseCVDebug(result.parseCVDebug);
+        }
+        resolve();
+      });
+    });
   }
   
   // ============ AI PROVIDER SETTINGS (Synced from Profile) ============
@@ -588,6 +601,9 @@ class ATSTailor {
     
     // Update Workday progress UI on load
     this.updateWorkdayProgressUI();
+    
+    // Parse CV Debug Panel
+    document.getElementById('reparseCV')?.addEventListener('click', () => this.reparseCV());
 
     // Preview tabs
     document.getElementById('previewCvTab')?.addEventListener('click', () => this.switchPreviewTab('cv'));
@@ -4201,6 +4217,171 @@ function extractJobInfoFromPageInjected() {
   }
 
   return result;
+}
+
+  // ============ PARSE CV DEBUG PANEL METHODS ============
+  
+  /**
+   * Update the Parse CV Debug panel with current parsing data
+   */
+  updateParseCVDebug(debugData) {
+    const statusEl = document.getElementById('parseCVStatus');
+    const fileTypeEl = document.getElementById('debugFileType');
+    const fileSizeEl = document.getElementById('debugFileSize');
+    const textLengthEl = document.getElementById('debugTextLength');
+    const experienceCountEl = document.getElementById('debugExperienceCount');
+    const parseTimeEl = document.getElementById('debugParseTime');
+    const snippetEl = document.getElementById('debugTextSnippet');
+    
+    if (!debugData) {
+      if (statusEl) {
+        statusEl.textContent = 'No data';
+        statusEl.className = 'debug-status';
+      }
+      return;
+    }
+    
+    // Update status badge
+    if (statusEl) {
+      if (debugData.success) {
+        statusEl.textContent = '✓ Parsed';
+        statusEl.className = 'debug-status success';
+      } else {
+        statusEl.textContent = '✗ Error';
+        statusEl.className = 'debug-status error';
+      }
+    }
+    
+    // Update individual fields
+    if (fileTypeEl) fileTypeEl.textContent = debugData.fileType || '—';
+    if (fileSizeEl) fileSizeEl.textContent = debugData.fileSize ? this.formatFileSize(debugData.fileSize) : '—';
+    if (textLengthEl) textLengthEl.textContent = debugData.extractedTextLength ? `${debugData.extractedTextLength.toLocaleString()} chars` : '—';
+    if (experienceCountEl) experienceCountEl.textContent = debugData.experienceCount ?? '—';
+    if (parseTimeEl) parseTimeEl.textContent = debugData.parseTime ? `${debugData.parseTime}ms` : '—';
+    if (snippetEl) snippetEl.textContent = debugData.snippet || '—';
+    
+    console.log('[ATS Tailor] Parse CV Debug updated:', debugData);
+  }
+  
+  /**
+   * Format file size to human readable string
+   */
+  formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+  
+  /**
+   * Re-parse CV from profile storage
+   */
+  async reparseCV() {
+    if (!this.session?.access_token || !this.session?.user?.id) {
+      this.showToast('Please login first', 'error');
+      return;
+    }
+    
+    const btn = document.getElementById('reparseCV');
+    if (btn) {
+      btn.disabled = true;
+      btn.querySelector('.btn-text').textContent = 'Parsing...';
+    }
+    
+    try {
+      const startTime = performance.now();
+      
+      // Fetch profile to get CV file path
+      const profileRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${this.session.user.id}&select=cv_file_path,cv_file_name`,
+        {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${this.session.access_token}`,
+          },
+        }
+      );
+      
+      if (!profileRes.ok) {
+        throw new Error('Could not fetch profile');
+      }
+      
+      const profiles = await profileRes.json();
+      const profile = profiles?.[0];
+      
+      if (!profile?.cv_file_path) {
+        this.showToast('No CV file uploaded in profile', 'error');
+        this.updateParseCVDebug({ success: false, error: 'No CV file found' });
+        return;
+      }
+      
+      // Download the CV file from storage
+      const cvFileRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/authenticated/${profile.cv_file_path}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.session.access_token}`,
+          },
+        }
+      );
+      
+      if (!cvFileRes.ok) {
+        throw new Error('Could not download CV file');
+      }
+      
+      const cvBlob = await cvFileRes.blob();
+      const cvFile = new File([cvBlob], profile.cv_file_name || 'cv.pdf', { type: cvBlob.type });
+      
+      // Call parse-cv edge function
+      const formData = new FormData();
+      formData.append('file', cvFile);
+      
+      const parseRes = await fetch(`${SUPABASE_URL}/functions/v1/parse-cv`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: formData,
+      });
+      
+      const parseTime = Math.round(performance.now() - startTime);
+      
+      if (!parseRes.ok) {
+        const errorText = await parseRes.text();
+        throw new Error(errorText || 'Parse failed');
+      }
+      
+      const parseResult = await parseRes.json();
+      
+      // Update debug panel with results
+      const debugData = {
+        success: true,
+        fileType: cvFile.type || profile.cv_file_name?.split('.').pop()?.toUpperCase() || 'Unknown',
+        fileSize: cvFile.size,
+        extractedTextLength: parseResult.debug?.extractedTextLength || 0,
+        experienceCount: parseResult.professionalExperience?.length || parseResult.workExperience?.length || 0,
+        parseTime: parseTime,
+        snippet: parseResult.debug?.snippet || (parseResult.rawText || '').substring(0, 500),
+      };
+      
+      this.updateParseCVDebug(debugData);
+      
+      // Store in local storage for persistence
+      chrome.storage.local.set({ parseCVDebug: debugData });
+      
+      this.showToast(`✅ CV parsed: ${debugData.experienceCount} experiences found`, 'success');
+      
+    } catch (error) {
+      console.error('[ATS Tailor] Re-parse CV error:', error);
+      this.showToast('Failed to re-parse CV: ' + error.message, 'error');
+      this.updateParseCVDebug({ success: false, error: error.message });
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.querySelector('.btn-text').textContent = 'Re-parse CV';
+      }
+    }
+  }
 }
 
 // Initialize when DOM is ready
