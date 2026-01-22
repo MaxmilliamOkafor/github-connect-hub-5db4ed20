@@ -498,6 +498,7 @@ class ATSTailor {
 
   bindEvents() {
     document.getElementById('loginBtn')?.addEventListener('click', () => this.login());
+    document.getElementById('signupBtn')?.addEventListener('click', () => this.signup());
     document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
     document.getElementById('tailorBtn')?.addEventListener('click', () => this.tailorDocuments({ force: true }));
     document.getElementById('refreshJob')?.addEventListener('click', () => this.detectCurrentJob());
@@ -1860,6 +1861,109 @@ class ATSTailor {
     } finally {
       loginBtn.disabled = false;
       loginBtn.textContent = 'Sign In';
+    }
+  }
+
+  async signup() {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    
+    const email = emailInput?.value?.trim();
+    const password = passwordInput?.value;
+    
+    if (!email || !password) {
+      this.showToast('Please enter email and password', 'error');
+      return;
+    }
+    
+    if (password.length < 6) {
+      this.showToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+    
+    if (loginBtn) loginBtn.disabled = true;
+    if (signupBtn) {
+      signupBtn.disabled = true;
+      signupBtn.textContent = 'Creating account...';
+    }
+    
+    try {
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ 
+          email, 
+          password,
+          options: {
+            emailRedirectTo: 'https://siwxacsqjrakbohzdtkx.supabase.co'
+          }
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error_description || data.msg || data.error || 'Signup failed');
+      }
+      
+      // Auto-confirm is enabled, so we should have a session
+      if (data.access_token) {
+        this.session = {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          user: data.user
+        };
+        
+        // Create profile record for the new user
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${data.access_token}`,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              user_id: data.user.id,
+              email: email,
+              professional_experience: [],
+              skills: [],
+              education: [],
+              certifications: []
+            })
+          });
+        } catch (profileError) {
+          console.warn('[ATS Tailor] Profile creation failed:', profileError);
+        }
+        
+        await this.saveSession();
+        this.showToast('Account created! You are now logged in.', 'success');
+        this.updateUI();
+        
+        const found = await this.detectCurrentJob();
+        if (found && this.currentJob) {
+          this.tailorDocuments();
+        }
+      } else {
+        // Email confirmation required
+        this.showToast('Account created! Please check your email to confirm.', 'success');
+      }
+      
+    } catch (error) {
+      console.error('Signup error:', error);
+      this.showToast(error.message || 'Signup failed', 'error');
+    } finally {
+      if (loginBtn) loginBtn.disabled = false;
+      if (signupBtn) {
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Create Account';
+      }
     }
   }
 
