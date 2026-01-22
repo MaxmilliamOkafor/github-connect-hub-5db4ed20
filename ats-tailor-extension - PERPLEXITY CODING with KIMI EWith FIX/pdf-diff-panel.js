@@ -185,7 +185,7 @@
 
     // Call backend generate-pdf and capture parsed sections
     async callGeneratePDF(profile, session) {
-      const SUPABASE_URL = 'https://wntpldomgjutwufphnpg.supabase.co';
+      const SUPABASE_URL = 'https://siwxacsqjrakbohzdtkx.supabase.co';
       
       const requestBody = {
         candidateData: {
