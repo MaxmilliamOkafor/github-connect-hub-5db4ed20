@@ -342,6 +342,24 @@ body::-webkit-scrollbar-thumb {
   color: var(--text-muted);
 }
 
+/* ============ SIGNUP DIVIDER ============ */
+.signup-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.signup-divider::before,
+.signup-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
 /* ============ USER BAR ============ */
 .user-bar {
   display: flex;
