@@ -3,8 +3,8 @@
 // Location Strategy, Enterprise CV Parser with Immutable Field Protection
 // Auto-trigger on ATS detection, 100% keyword match
 
-const SUPABASE_URL = 'https://wntpldomgjutwufphnpg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudHBsZG9tZ2p1dHd1ZnBobnBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2MDY0NDAsImV4cCI6MjA4MjE4MjQ0MH0.vOXBQIg6jghsAby2MA1GfE-MNTRZ9Ny1W2kfUHGUzNM';
+const SUPABASE_URL = 'https://siwxacsqjrakbohzdtkx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpd3hhY3NxanJha2JvaHpkdGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1ODg1NzcsImV4cCI6MjA4NDE2NDU3N30.hlqtIQ50WtyIIhj8IQ4YCGbSa-yryV1CD1NQlaN7XO0';
 
 // ============ GLOBAL ERROR HANDLER: Prevent extension crashes ============
 // Catches unhandled promise rejections that would otherwise crash the extension
@@ -641,6 +641,7 @@ class ATSTailor {
 
   bindEvents() {
     document.getElementById('loginBtn')?.addEventListener('click', () => this.login());
+    document.getElementById('signupBtn')?.addEventListener('click', () => this.signup());
     document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
     document.getElementById('tailorBtn')?.addEventListener('click', () => this.tailorDocuments({ force: true }));
     document.getElementById('refreshJob')?.addEventListener('click', () => this.detectCurrentJob());
@@ -3741,6 +3742,100 @@ ATSTailor.prototype.copyDebugReport = function() {
   navigator.clipboard.writeText(JSON.stringify(report, null, 2))
     .then(() => this.showToast('Debug report copied to clipboard', 'success'))
     .catch(() => this.showToast('Failed to copy', 'error'));
+};
+
+// ============ LOGIN / SIGNUP / LOGOUT ============
+ATSTailor.prototype.login = async function() {
+  const email = document.getElementById('email')?.value?.trim();
+  const password = document.getElementById('password')?.value;
+  if (!email || !password) {
+    this.showToast('Enter email and password', 'error');
+    return;
+  }
+  this.setStatus('Signing in...', 'working');
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'Login failed');
+    this.session = data;
+    await this.saveSession();
+    await this.loadAIProviderSettings();
+    await this.loadBaseCVFromProfile();
+    this.updateUI();
+    this.updateAIProviderUI();
+    this.detectCurrentJob();
+    this.showToast('Signed in!', 'success');
+  } catch (e) {
+    this.showToast(e.message, 'error');
+    this.setStatus('Login Failed', 'error');
+  }
+};
+
+ATSTailor.prototype.signup = async function() {
+  const email = document.getElementById('email')?.value?.trim();
+  const password = document.getElementById('password')?.value;
+  if (!email || !password) {
+    this.showToast('Enter email and password', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    this.showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+  this.setStatus('Creating account...', 'working');
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'Signup failed');
+    if (data.access_token) {
+      this.session = data;
+      await this.saveSession();
+      // Create basic profile
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${data.access_token}`,
+            Prefer: 'return=minimal'
+          },
+          body: JSON.stringify({ user_id: data.user?.id, email })
+        });
+      } catch (_) {}
+      this.updateUI();
+      this.showToast('Account created & signed in!', 'success');
+    } else {
+      this.showToast('Check your email to confirm your account', 'success');
+      this.setStatus('Confirm Email', 'ready');
+    }
+  } catch (e) {
+    this.showToast(e.message, 'error');
+    this.setStatus('Signup Failed', 'error');
+  }
+};
+
+ATSTailor.prototype.logout = async function() {
+  try {
+    if (this.session?.access_token) {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${this.session.access_token}` }
+      });
+    }
+  } catch (_) {}
+  this.session = null;
+  await this.saveSession();
+  this.updateUI();
+  this.showToast('Logged out', 'success');
 };
 
 // Initialize when DOM is ready

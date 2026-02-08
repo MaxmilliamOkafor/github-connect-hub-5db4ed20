@@ -2907,3 +2907,19 @@ body::-webkit-scrollbar-thumb {
   color: var(--accent-secondary);
   font-style: italic;
 }
+
+.signup-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.signup-divider::before,
+.signup-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
